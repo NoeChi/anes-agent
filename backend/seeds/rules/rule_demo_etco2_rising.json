@@ -1,0 +1,15 @@
+{
+  "id": "rule_demo_etco2_rising",
+  "name": "EtCO₂ 快速上升",
+  "description": "手術室中 EtCO₂ 在 10 分鐘內上升超過 8 mmHg，需排除通氣不足、氣腹吸收或惡性高熱。",
+  "severity": "warning",
+  "logic": "all",
+  "conditions": [
+    {"field": "location", "op": "==", "value": "OR"},
+    {"field": "etco2", "op": "rises_by", "value": 8, "window_min": 10}
+  ],
+  "locations": ["OR"],
+  "message": "EtCO₂ 目前 {etco2} mmHg，10 分鐘內快速上升",
+  "suggestion": "檢查呼吸器設定與管路；腹腔鏡手術評估 CO₂ 吸收；合併心跳、體溫上升時啟動惡性高熱評估。",
+  "author": "系統示範"
+}

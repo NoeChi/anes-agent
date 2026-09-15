@@ -1,0 +1,43 @@
+# 麻醉 AI 查房助理：PostgreSQL 資料庫 + 應用程式（後端 FastAPI 同時提供 Vue 前端）
+#   一般使用：docker compose up -d --build   → 開啟 http://127.0.0.1:8000
+#   開發時只啟動資料庫：docker compose up -d db
+name: anes-agent
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: anes
+      POSTGRES_PASSWORD: anes
+      POSTGRES_DB: anes
+    ports:
+      - "127.0.0.1:55432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U anes -d anes"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+asyncpg://anes:anes@db:5432/anes
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      HOST: 0.0.0.0
+      PORT: "8000"
+      NO_BROWSER: "1"
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - ml_cache:/app/backend/cache
+
+volumes:
+  pgdata:
+  ml_cache:

@@ -1,0 +1,15 @@
+{
+  "id": "rule_demo_elderly_htn",
+  "name": "高齡病人血壓過高",
+  "description": "70 歲以上病人收縮壓持續超過 160 mmHg，腦中風與心肌缺血風險較高。",
+  "severity": "warning",
+  "logic": "all",
+  "conditions": [
+    {"field": "age", "op": ">=", "value": 70},
+    {"field": "sbp", "op": ">", "value": 160, "duration_min": 3}
+  ],
+  "locations": ["OR", "PACU"],
+  "message": "{age} 歲病人收縮壓 {sbp} mmHg，已持續超過 3 分鐘",
+  "suggestion": "評估疼痛、麻醉深度與膀胱脹；必要時給予短效降壓藥並密切追蹤。",
+  "author": "系統示範"
+}

@@ -1,0 +1,15 @@
+{
+  "id": "rule_demo_dm_glucose",
+  "name": "糖尿病病人血糖控制",
+  "description": "糖尿病病人最近一次血糖高於 200 mg/dL 時提醒依胰島素流程處理。",
+  "severity": "warning",
+  "logic": "all",
+  "conditions": [
+    {"field": "has_dm", "op": "is_true"},
+    {"field": "lab_glucose", "op": ">", "value": 200}
+  ],
+  "locations": ["OR", "PACU"],
+  "message": "糖尿病病人血糖 {lab_glucose} mg/dL",
+  "suggestion": "依術中胰島素流程給予 Regular Insulin，1 小時後追蹤血糖，注意血鉀。",
+  "author": "系統示範"
+}

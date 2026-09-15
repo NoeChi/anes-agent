@@ -1,0 +1,15 @@
+{
+  "id": "rule_demo_long_pacu",
+  "name": "恢復室停留過久",
+  "description": "病人在恢復室超過 90 分鐘，提醒確認延遲原因。",
+  "severity": "info",
+  "logic": "all",
+  "conditions": [
+    {"field": "location", "op": "==", "value": "PACU"},
+    {"field": "minutes_in_location", "op": ">", "value": 90}
+  ],
+  "locations": ["PACU"],
+  "message": "已在恢復室 {minutes_in_location} 分鐘",
+  "suggestion": "確認是否有尚未解決的問題（疼痛、噁心、生命徵象）或病房床位安排。",
+  "author": "系統示範"
+}

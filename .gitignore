@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+.pytest_cache/
+.venv
+
+# Node / Vue
+node_modules/
+frontend/dist/
+
+# 本機產生的快取（可隨時重建）
+backend/cache/
+.DS_Store

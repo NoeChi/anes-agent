@@ -1,0 +1,75 @@
+{
+  "id": "model_1a093295fda",
+  "name": "低血氧預警模型（示範）",
+  "kind": "classifier",
+  "family": "ml",
+  "algorithm": "rf",
+  "algorithm_label": "隨機森林（Random Forest）",
+  "target": "y_desat5",
+  "target_label": "5 分鐘內血氧下降（SpO₂ < 90）",
+  "features": [
+    "hr_now",
+    "hr_slope5",
+    "spo2_now",
+    "spo2_min5",
+    "spo2_slope5",
+    "etco2_now",
+    "etco2_slope10",
+    "rr_now",
+    "age",
+    "bmi",
+    "is_ga",
+    "phase_code"
+  ],
+  "threshold": 0.2,
+  "critical_threshold": 0.85,
+  "metrics": {
+    "auc": 0.956,
+    "threshold": 0.2,
+    "suggested_threshold": 0.2,
+    "sensitivity": 0.872,
+    "specificity": 0.96,
+    "ppv": 0.136,
+    "n_train": 59822,
+    "n_test": 20699,
+    "patients_train": 477,
+    "patients_test": 160,
+    "prevalence": 0.008,
+    "train_seconds": 1.0,
+    "importance": [
+      {
+        "feature": "spo2_now",
+        "label": "目前血氧 SpO₂",
+        "weight": 0.268
+      },
+      {
+        "feature": "etco2_now",
+        "label": "目前呼氣末二氧化碳 EtCO₂",
+        "weight": 0.187
+      },
+      {
+        "feature": "spo2_min5",
+        "label": "近 5 分鐘血氧最低",
+        "weight": 0.184
+      },
+      {
+        "feature": "rr_now",
+        "label": "目前呼吸速率",
+        "weight": 0.083
+      },
+      {
+        "feature": "spo2_slope5",
+        "label": "近 5 分鐘血氧變化速度",
+        "weight": 0.077
+      },
+      {
+        "feature": "etco2_slope10",
+        "label": "近 10 分鐘 EtCO₂ 變化速度",
+        "weight": 0.052
+      }
+    ]
+  },
+  "description": "示範：用免寫程式訓練功能建立的隨機森林模型，預測 5 分鐘內血氧下降（SpO₂ < 90）。",
+  "trained_at": "2026-09-12 09:09",
+  "source": "no-code-trainer"
+}

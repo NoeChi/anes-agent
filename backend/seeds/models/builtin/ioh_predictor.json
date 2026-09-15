@@ -1,0 +1,52 @@
+{
+  "id": "ioh_predictor",
+  "name": "低血壓預測 AI",
+  "kind": "classifier",
+  "family": "ml",
+  "algorithm": "gbt",
+  "algorithm_label": "梯度提升樹（Gradient Boosting）",
+  "target": "y_ioh5",
+  "target_label": "5 分鐘內發生低血壓（MAP < 65 持續 1 分鐘）",
+  "features": [
+    "map_now",
+    "map_mean5",
+    "map_min5",
+    "map_slope5",
+    "map_slope10",
+    "map_baseline_ratio",
+    "sbp_now",
+    "pp_now",
+    "hr_now",
+    "hr_slope5",
+    "shock_index",
+    "bis_now",
+    "ebl_rate15",
+    "age",
+    "asa",
+    "is_ga",
+    "phase_code"
+  ],
+  "threshold": 0.65,
+  "critical_threshold": 0.9,
+  "metrics": {
+    "auc": 0.928,
+    "threshold": 0.65,
+    "suggested_threshold": 0.65,
+    "sensitivity": 0.696,
+    "specificity": 0.964,
+    "ppv": 0.249,
+    "n_train": 55924,
+    "n_test": 20168,
+    "patients_train": 477,
+    "patients_test": 160,
+    "prevalence": 0.016,
+    "train_seconds": 1.1,
+    "importance": []
+  },
+  "locations": [
+    "OR"
+  ],
+  "description": "在血壓真正掉下來之前，預測未來 5 分鐘內發生術中低血壓的機率。",
+  "trained_at": "2026-09-12 08:41",
+  "source": "builtin"
+}
