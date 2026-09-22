@@ -1,10 +1,12 @@
 """系統測試：模擬器、工具、規則、技能、資料庫持久化、查房、離線對話、AI 代理迴圈（以假 LLM 測試）。"""
 from __future__ import annotations
 
+import time
 from types import SimpleNamespace
 
 import pytest
 
+from app.agent.rounds import RoundManager
 from app.config import Settings
 from app.repositories import agent_records
 from app.simulator.engine import SimulationEngine
@@ -63,6 +65,20 @@ def test_rule_validation_and_evaluation():
     eng = SimulationEngine(seed=4)
     p = next(p for p in eng.patients.values() if p.location == "OR")
     assert tool.run(PatientContext(p), {}).findings
+
+
+def test_interval_round_is_due_when_overdue():
+    """固定間隔查房：逾期時 next_due 要回傳過去的時間點，排程迴圈才會真的觸發。"""
+    settings = Settings()
+    rounds = RoundManager(None, None, None, None, settings, None, None)
+
+    rounds.last_full_round_wall = time.time() - 600
+    assert rounds.next_due() <= time.time(), "已逾期的查房應該立刻到期"
+    assert rounds.schedule_info()["seconds_to_next"] == 0
+
+    rounds.last_full_round_wall = time.time()
+    interval = settings.section("rounds")["interval_minutes"]
+    assert rounds.next_due() > time.time() + interval * 60 - 5, "還沒到期時應該回傳未來的時間點"
 
 
 # ---------------------------------------------------------------- 資料庫與 API

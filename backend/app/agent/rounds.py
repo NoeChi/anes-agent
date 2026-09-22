@@ -135,8 +135,9 @@ class RoundManager:
         if cfg["mode"] == "interval":
             base = self.last_full_round_wall or self.started_wall
             due = datetime.fromtimestamp(base) + timedelta(minutes=cfg["interval_minutes"])
-            if due < now:
-                due = now
+            # 已經逾期時保留原本的到期時間，不要改成「現在」：loop() 會拿自己取樣的時間跟這個
+            # 回傳值比較，改成現在會讓 now >= due 永遠差幾微秒不成立，固定間隔查房因此不會觸發。
+            # 對外顯示由 schedule_info() 的 max(0, …) 處理。
             for _ in range(2 * 24 * 60):
                 if self._in_window(due, cfg):
                     return due.timestamp()
@@ -171,8 +172,8 @@ class RoundManager:
             await asyncio.sleep(2)
             try:
                 cfg = self.settings.section("rounds")
-                now = time.time()
                 due = self.next_due()
+                now = time.time()  # 取樣要在 next_due() 之後，否則逾期時差幾微秒就判斷不成立
                 if due is not None and now >= due:
                     if cfg["mode"] == "schedule":
                         self.fired_slots.add(datetime.fromtimestamp(due).strftime("%Y-%m-%d %H:%M"))
