@@ -99,13 +99,25 @@ export interface ModelChoice {
   label: string
 }
 
+export interface ProviderInfo {
+  id: string
+  label: string
+  env: string
+  key_placeholder: string
+  console: string
+  key_set: boolean
+}
+
 export interface LlmSettingsPublic {
+  provider: string
   model: string
+  openai_model?: string
   effort: 'low' | 'medium' | 'high'
   api_key_set: boolean
   api_key_source: string | null
   api_key_hint: string
   model_choices: ModelChoice[]
+  providers: ProviderInfo[]
 }
 
 export interface PublicSettings {
@@ -118,6 +130,8 @@ export interface PublicSettings {
 export interface LlmStatus {
   available: boolean
   source?: string | null
+  provider?: string
+  provider_label?: string
   model?: string
   effort?: string
   last_error?: string | null

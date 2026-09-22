@@ -15,16 +15,42 @@ PLUGINS_DIR = BASE_DIR / "plugins"
 FRONTEND_DIST = Path(os.environ.get("ANES_FRONTEND_DIR", PROJECT_DIR / "frontend" / "dist"))
 DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql+asyncpg://anes:anes@127.0.0.1:55432/anes")
 
-MODEL_CHOICES = [
-    {"id": "claude-opus-5", "label": "Claude Opus 5（預設・判斷最完整）"},
-    {"id": "claude-sonnet-5", "label": "Claude Sonnet 5（較快・費用較低）"},
-    {"id": "claude-haiku-4-5", "label": "Claude Haiku 4.5（最快・費用最低）"},
-]
+# 支援兩家 LLM 供應商。金鑰與模型分開存，切換供應商不必重新輸入。
+PROVIDERS: dict = {
+    "anthropic": {
+        "label": "Anthropic Claude",
+        "env": "ANTHROPIC_API_KEY",
+        "key_placeholder": "sk-ant-…",
+        "console": "console.anthropic.com",
+        "models": [
+            {"id": "claude-opus-5", "label": "Claude Opus 5（判斷最完整）"},
+            {"id": "claude-sonnet-5", "label": "Claude Sonnet 5（較快・費用較低）"},
+            {"id": "claude-haiku-4-5", "label": "Claude Haiku 4.5（最快・費用最低）"},
+        ],
+        "default_model": "claude-opus-5",
+    },
+    "openai": {
+        "label": "OpenAI",
+        "env": "OPENAI_API_KEY",
+        "key_placeholder": "sk-…",
+        "console": "platform.openai.com",
+        # 不寫死清單：GET /api/llm/models 會向帳號查詢實際可用的模型
+        "models": [],
+        "default_model": "",
+    },
+}
+MODEL_CHOICES = PROVIDERS["anthropic"]["models"]  # 舊名稱，保留相容
 
 DEFAULT_SETTINGS: dict = {
     "llm": {
+        # anthropic / openai
+        "provider": "anthropic",
+        # api_key 是 Anthropic 的金鑰（沿用原欄位名，舊資料不必搬移）
         "api_key": "",
+        "openai_api_key": "",
         "model": "claude-opus-5",
+        # 留空＝使用帳號可用清單中的第一個
+        "openai_model": "",
         "effort": "medium",
     },
     "rounds": {
@@ -105,12 +131,20 @@ def _validate(section: str, values: dict) -> dict:
         if "running" in out:
             out["running"] = bool(out["running"])
     elif section == "llm":
-        if "model" in out and out["model"] not in {m["id"] for m in MODEL_CHOICES}:
-            raise SettingsError("不支援的 AI 模型")
+        if "provider" in out and out["provider"] not in PROVIDERS:
+            raise SettingsError("供應商只能是 " + " / ".join(PROVIDERS))
+        for key in ("model", "openai_model"):
+            if key in out:
+                # 模型清單改為向各家 API 動態查詢，這裡只做基本格式檢查
+                value = str(out[key]).strip()
+                if len(value) > 80 or any(c.isspace() for c in value):
+                    raise SettingsError("模型代號格式不正確")
+                out[key] = value
         if "effort" in out and out["effort"] not in ("low", "medium", "high"):
             raise SettingsError("思考深度只能是 low / medium / high")
-        if "api_key" in out:
-            out["api_key"] = str(out["api_key"]).strip()
+        for key in ("api_key", "openai_api_key"):
+            if key in out:
+                out[key] = str(out[key]).strip()
     return out
 
 
@@ -176,21 +210,44 @@ class Settings:
         self.tools.pop(tool_id, None)
 
     # ---- llm ----
-    def api_key(self) -> tuple[str, str | None]:
-        key = self.data["llm"].get("api_key") or ""
+    def provider(self) -> str:
+        return self.data["llm"].get("provider") or "anthropic"
+
+    def _key_field(self, provider: str) -> str:
+        # Anthropic 沿用原本的 api_key 欄位，其他供應商用 <provider>_api_key
+        return "api_key" if provider == "anthropic" else f"{provider}_api_key"
+
+    def api_key(self, provider: str | None = None) -> tuple[str, str | None]:
+        """回傳 (金鑰, 來源)。來源：settings（網頁輸入）／env（環境變數）／None（沒有）。"""
+        provider = provider or self.provider()
+        key = self.data["llm"].get(self._key_field(provider)) or ""
         if key:
             return key, "settings"
-        env = os.environ.get("ANTHROPIC_API_KEY", "")
+        env = os.environ.get(PROVIDERS[provider]["env"], "")
         if env:
             return env, "env"
         return "", None
 
+    def model(self, provider: str | None = None) -> str:
+        provider = provider or self.provider()
+        field = "model" if provider == "anthropic" else f"{provider}_model"
+        return self.data["llm"].get(field) or PROVIDERS[provider]["default_model"]
+
     def public(self) -> dict:
         data = copy.deepcopy(self.data)
-        key, source = self.api_key()
-        data["llm"].pop("api_key", None)
+        provider = self.provider()
+        key, source = self.api_key(provider)
+        for pid in PROVIDERS:
+            data["llm"].pop(self._key_field(pid), None)
+        data["llm"]["provider"] = provider
+        data["llm"]["model"] = self.model(provider)
         data["llm"]["api_key_set"] = bool(key)
         data["llm"]["api_key_source"] = source
         data["llm"]["api_key_hint"] = f"{key[:7]}…{key[-4:]}" if len(key) > 12 else ""
-        data["llm"]["model_choices"] = MODEL_CHOICES
+        data["llm"]["model_choices"] = PROVIDERS[provider]["models"]
+        data["llm"]["providers"] = [
+            {"id": pid, "label": p["label"], "env": p["env"], "key_placeholder": p["key_placeholder"],
+             "console": p["console"], "key_set": bool(self.api_key(pid)[0])}
+            for pid, p in PROVIDERS.items()
+        ]
         return data

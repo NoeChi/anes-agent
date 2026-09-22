@@ -4,7 +4,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Body, Depends
 
 from ..agent.llm import friendly_error
-from ..config import SettingsError
+from ..config import PROVIDERS, SettingsError
 from ..state import AppState
 from .deps import bad, get_state
 
@@ -49,5 +49,16 @@ async def test_llm(S: AppState = Depends(get_state)):
         bad("尚未設定 API 金鑰")
     try:
         return await S.llm.test()
+    except Exception as exc:
+        bad(friendly_error(exc))
+
+
+@router.get("/llm/models")
+async def llm_models(provider: str | None = None, S: AppState = Depends(get_state)):
+    """向供應商查詢這把金鑰實際可用的模型（OpenAI 的模型清單會因帳號而異）。"""
+    if provider is not None and provider not in PROVIDERS:
+        bad("未知的供應商")
+    try:
+        return await S.llm.list_models(provider)
     except Exception as exc:
         bad(friendly_error(exc))

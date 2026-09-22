@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { api, errMsg } from '@/api/client'
-import type { AppStateResponse, PublicSettings } from '@/api/types'
+import type { AppStateResponse, ModelChoice, PublicSettings } from '@/api/types'
 import { confirmDialog } from '@/composables/useDialog'
 import { toast } from '@/composables/useToast'
 import { useLiveStore } from '@/stores/live'
@@ -24,7 +24,18 @@ const TABLE_LABELS: Record<string, string> = {
 }
 
 const llm = computed(() => state.value?.settings.llm)
-const sourceText = computed(() => ({ settings: '（網頁設定）', env: '（環境變數 ANTHROPIC_API_KEY）' })[llm.value?.api_key_source ?? ''] ?? '')
+const provider = computed(() => llm.value?.provider ?? 'anthropic')
+const providerInfo = computed(() => llm.value?.providers?.find((p) => p.id === provider.value))
+const modelField = computed(() => (provider.value === 'openai' ? 'openai_model' : 'model'))
+const models = ref<ModelChoice[]>([])
+const loadingModels = ref(false)
+const sourceText = computed(() =>
+  llm.value?.api_key_source === 'settings'
+    ? '（網頁設定）'
+    : llm.value?.api_key_source === 'env'
+      ? `（環境變數 ${providerInfo.value?.env ?? ''}）`
+      : '',
+)
 const ML_STATE: Record<string, string> = { ready: '就緒', training: '訓練中', error: '錯誤' }
 const tables = computed(() => Object.entries(state.value?.db?.tables ?? {}))
 
@@ -46,19 +57,45 @@ async function saveLlm(body: Record<string, unknown>, message: string) {
   }
 }
 
+const keyField = computed(() => (provider.value === 'openai' ? 'openai_api_key' : 'api_key'))
+
 async function saveKey() {
   const key = apiKey.value.trim()
   if (!key) {
     toast('請輸入金鑰', 'warn')
     return
   }
-  await saveLlm({ api_key: key }, '金鑰已儲存，AI 助理已切換為 Claude 模式')
+  await saveLlm({ [keyField.value]: key }, `金鑰已儲存，AI 助理已改用 ${providerInfo.value?.label ?? ''}`)
   apiKey.value = ''
+  await loadModels()
 }
 
 async function clearKey() {
   if (!(await confirmDialog('清除金鑰', '清除後系統會改用離線模式。確定嗎？', '清除', true))) return
-  await saveLlm({ api_key: '' }, '已清除金鑰')
+  await saveLlm({ [keyField.value]: '' }, '已清除金鑰')
+  models.value = []
+}
+
+async function switchProvider(value: string) {
+  await saveLlm({ provider: value }, `已切換供應商：${llm.value?.providers?.find((p) => p.id === value)?.label ?? value}`)
+  models.value = []
+  await loadModels()
+}
+
+async function loadModels() {
+  if (!llm.value?.api_key_set) {
+    models.value = []
+    return
+  }
+  loadingModels.value = true
+  try {
+    models.value = await api.get<ModelChoice[]>('/api/llm/models')
+  } catch (e) {
+    models.value = []
+    toast(errMsg(e), 'warn')
+  } finally {
+    loadingModels.value = false
+  }
 }
 
 async function testConnection() {
@@ -73,7 +110,10 @@ async function testConnection() {
   }
 }
 
-onMounted(load)
+onMounted(async () => {
+  await load()
+  await loadModels()
+})
 watch(() => live.llm?.available, () => void load())
 </script>
 
@@ -87,7 +127,15 @@ watch(() => live.llm?.available, () => void load())
     </div>
     <div class="grid-2">
       <div class="card">
-        <div class="card-title">🤖 Claude AI 連線</div>
+        <div class="card-title">🤖 AI 連線</div>
+        <label class="field">
+          <span>供應商 <span class="hint">同一套工具與技能，換一家模型就能跑</span></span>
+          <select class="input" :value="provider" @change="switchProvider(($event.target as HTMLSelectElement).value)">
+            <option v-for="p in llm?.providers ?? []" :key="p.id" :value="p.id">
+              {{ p.label }}{{ p.key_set ? '（已設定金鑰）' : '' }}
+            </option>
+          </select>
+        </label>
         <div style="margin-bottom: 10px">
           <template v-if="llm?.api_key_set">
             <span class="pill pill-ok">🤖 已設定金鑰 {{ llm.api_key_hint }} {{ sourceText }}</span>
@@ -96,9 +144,9 @@ watch(() => live.llm?.available, () => void load())
           <span v-else class="pill pill-off">🔌 尚未設定金鑰（離線模式）</span>
         </div>
         <label class="field">
-          <span>Claude API 金鑰 <span class="hint">到 console.anthropic.com 申請；金鑰只儲存在這台電腦上的系統中</span></span>
+          <span>{{ providerInfo?.label ?? 'AI' }} API 金鑰 <span class="hint">到 {{ providerInfo?.console }} 申請；金鑰只儲存在這台電腦上的系統中</span></span>
           <div class="row">
-            <input v-model="apiKey" class="input" :type="showKey ? 'text' : 'password'" placeholder="sk-ant-…" autocomplete="off" style="flex: 1" />
+            <input v-model="apiKey" class="input" :type="showKey ? 'text' : 'password'" :placeholder="providerInfo?.key_placeholder" autocomplete="off" style="flex: 1" />
             <button class="btn btn-sm btn-ghost" type="button" @click="showKey = !showKey">{{ showKey ? '隱藏' : '顯示' }}</button>
           </div>
         </label>
@@ -108,10 +156,14 @@ watch(() => live.llm?.available, () => void load())
           <button class="btn" :class="{ busy: testing }" @click="testConnection">🔌 測試連線</button>
         </div>
         <label class="field">
-          <span>AI 模型</span>
-          <select class="input" :value="llm?.model" @change="saveLlm({ model: ($event.target as HTMLSelectElement).value }, '模型已更新')">
-            <option v-for="m in llm?.model_choices ?? []" :key="m.id" :value="m.id">{{ m.label }}</option>
-          </select>
+          <span>AI 模型 <span v-if="provider === 'openai'" class="hint">清單來自你的 OpenAI 帳號</span></span>
+          <div class="row">
+            <select class="input" style="flex: 1" :value="llm?.model" @change="saveLlm({ [modelField]: ($event.target as HTMLSelectElement).value }, '模型已更新')">
+              <option v-if="!(models.length || llm?.model_choices?.length)" :value="llm?.model">{{ llm?.model || '（請先設定金鑰後載入模型）' }}</option>
+              <option v-for="m in models.length ? models : llm?.model_choices ?? []" :key="m.id" :value="m.id">{{ m.label }}</option>
+            </select>
+            <button class="btn btn-sm btn-ghost" :class="{ busy: loadingModels }" type="button" @click="loadModels">↻ 載入可用模型</button>
+          </div>
         </label>
         <div class="field">
           <span>思考深度</span>
