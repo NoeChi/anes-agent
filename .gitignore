@@ -15,3 +15,6 @@ frontend/dist/
 # 本機產生的快取（可隨時重建）
 backend/cache/
 .DS_Store
+
+# 專案導讀文件（本機閱讀用，不進版控）
+reading-guide/
