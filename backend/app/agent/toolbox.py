@@ -146,7 +146,9 @@ def _definitions() -> list[dict]:
         },
         {
             "name": "list_alerts",
-            "description": "列出進行中的警示（依嚴重度排序），含首次出現時間與是否已確認。",
+            "description": "列出進行中的警示（依嚴重度排序），含首次出現時間與是否已確認。"
+                           "這是跨查房追蹤的清單：警示要連續兩輪查房都沒再出現才會緩解，所以可能包含最近一次查房已判定正常的病人。"
+                           "要回答「目前哪些病人危急」請改用 list_patients 或 get_latest_round。",
             "input_schema": {"type": "object", "properties": {
                 "severity": {"type": "string", "enum": ["all", "critical", "warning"]},
             }},

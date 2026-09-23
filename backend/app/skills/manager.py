@@ -115,7 +115,12 @@ class SkillManager:
         return [s for s in self.skills.values() if s["enabled"] and "rounds" in s["use_in"] and s["triggers"]["always"]]
 
     def match_findings(self, findings: list) -> list[dict]:
-        """依查房發現（Finding 或 dict）找出適用的技能（不含 always 技能）。"""
+        """依查房發現（Finding 或 dict）找出適用的技能（不含 always 技能）。
+
+        關鍵字只比對發現的「標題」，不比對內容：內容常含數值明細（例如 Aldrete 評分會寫
+        「活動力2、呼吸2、循環2、意識2、血氧2」），用子字串比對整段內容會讓「血氧」這類
+        關鍵字誤中，導致無關的技能被套用。需要精準觸發請綁定工具（triggers.tools）。
+        """
         matched = []
         for s in self.skills.values():
             if not s["enabled"] or "rounds" not in s["use_in"] or s["triggers"]["always"]:
@@ -124,8 +129,8 @@ class SkillManager:
             kws = s["triggers"]["keywords"]
             for f in findings:
                 tool_id = f["tool_id"] if isinstance(f, dict) else f.tool_id
-                text = (f["title"] + f["detail"]) if isinstance(f, dict) else (f.title + f.detail)
-                if tool_id in tools or any(k in text for k in kws):
+                title = f["title"] if isinstance(f, dict) else f.title
+                if tool_id in tools or any(k in title for k in kws):
                     matched.append(s)
                     break
         return matched

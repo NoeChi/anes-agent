@@ -35,8 +35,11 @@ const nextText = computed(() => {
 
 const aiPill = computed(() => {
   if (live.ml?.state === 'training') return { cls: 'pill pill-warn', text: `🧠 ${live.ml.message || 'AI 模型準備中'}`, title: '' }
-  if (live.llm?.available) return { cls: 'pill pill-ok', text: '🤖 Claude 已連線', title: live.llm.model ?? '' }
-  return { cls: 'pill pill-off', text: '🔌 離線模式', title: '到「設定」輸入 Claude API 金鑰即可開啟完整 AI 功能' }
+  if (live.llm?.available) {
+    const provider = live.llm.provider_label ?? 'AI'
+    return { cls: 'pill pill-ok', text: `🤖 ${provider} 已連線`, title: live.llm.model ?? '' }
+  }
+  return { cls: 'pill pill-off', text: '🔌 離線模式', title: '到「設定」輸入 AI 供應商的 API 金鑰即可開啟完整 AI 功能' }
 })
 
 async function runRound() {

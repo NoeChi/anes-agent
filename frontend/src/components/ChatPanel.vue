@@ -53,8 +53,8 @@ watch(() => chat.open, (open) => {
     <div class="chat-head">
       <div class="row">
         <b>💬 AI 助理</b>
-        <span v-if="available" class="pill pill-ok">Claude AI</span>
-        <span v-else class="pill pill-off" title="到「設定」輸入 Claude API 金鑰即可開啟完整 AI 對話">離線模式</span>
+        <span v-if="available" class="pill pill-ok" :title="live.llm?.model ?? ''">{{ live.llm?.provider_label ?? 'AI' }}</span>
+        <span v-else class="pill pill-off" title="到「設定」輸入 AI 供應商的 API 金鑰即可開啟完整 AI 對話">離線模式</span>
       </div>
       <div class="row">
         <button class="btn btn-sm btn-ghost" title="清除對話，重新開始" @click="chat.reset()">新對話</button>
